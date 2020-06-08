@@ -19,7 +19,7 @@ globalSize = None
 _handlers = []
 
 def createAllCommandInputs(commandInputs):
-    widthHoles = commandInputs.addIntegerSliderCommandInput('widthHoles', 'Length', 1, 35)
+    widthHoles = commandInputs.addIntegerSliderCommandInput('widthHoles', 'Width', 1, 35)
     widthHoles.isVisible = False
     lengthHoles = commandInputs.addIntegerSliderCommandInput('lengthHoles', 'Length', 1, 35)
     lengthHoles.isVisible = False
@@ -42,6 +42,18 @@ def setSomeCommandInputs(parameters):
             # modelParameters.item(1).expression = str(globalSize)
             thisInput.expressionOne = str(globalComp.modelParameters.item(thisIndexMP).expression)
             thisInput.isVisible = True
+        elif key == 'widthHoles':
+            thisIndexMP = value['indexMP']
+            globalInputIndex[thisIndexMP] = key
+
+            thisInput = inputs.itemById('widthHoles')
+            # thisInput.setText
+            # thisInput.setText(value['name'], '')
+            thisInput.minimumValue = value['minValue']
+            thisInput.maximumValue = value['maxValue']
+            # modelParameters.item(1).expression = str(globalSize)
+            thisInput.expressionOne = str(globalComp.modelParameters.item(thisIndexMP).expression)
+            thisInput.isVisible = True
 
 
 def updateInputs():
@@ -50,7 +62,8 @@ def updateInputs():
 
     selectionInput = inputs.itemById('selection')
     if cmdInput.id == 'selection':
-
+        hideAllCommandInputs()
+        globalParameters.clear()
         if selectionInput.selectionCount > 0:
             if app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                 globalComp = selectionInput.selection(0).entity.component
@@ -60,10 +73,6 @@ def updateInputs():
                     selectionInput.clearSelection()
             else:
                 selectionInput.clearSelection()
-
-        else:
-            hideAllCommandInputs()
-            globalParameters.clear()
     else:
         for key, value in globalInputIndex.items():
             globalParameters[key] = inputs.itemById(value).expressionOne
@@ -213,6 +222,10 @@ def stop(context):
         # globalComp.attributes.add('pVFL', 'part name', 'Al 1x2x1x35 C-Channel v1')
         # globalComp.attributes.add('pVFL', 'parametric', '1')
         # globalComp.attributes.add('pVFL', 'parameters', '{"lengthHoles": {"name": "Length", "indexMP": 1, "minValue": 1, "maxValue": 35} }')
+
+        # globalComp.attributes.add('pVFL', 'part name', 'Al 1x25 Plate v1')
+        # globalComp.attributes.add('pVFL', 'parametric', '1')
+        # globalComp.attributes.add('pVFL', 'parameters', '{"widthHoles": {"name": "Width", "indexMP": 0, "minValue": 1, "maxValue": 5}, "lengthHoles": {"name": "Length", "indexMP": 1, "minValue": 1, "maxValue": 25} }')
         pass
 
     except:
