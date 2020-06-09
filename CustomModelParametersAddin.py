@@ -33,6 +33,7 @@ def createAllCommandInputs(commandInputs):
 def hideAllCommandInputs():
     inputs.itemById("widthHoles").isVisible = False
     inputs.itemById("lengthHoles").isVisible = False
+    inputs.itemById("inserts").isVisible = False
 
 def setHoles(key, value):
     thisIndexMP = value["indexMP"]
@@ -71,7 +72,6 @@ def updateInputs():
     selectionInput = inputs.itemById("selection")
     if cmdInput.id == "selection":
         hideAllCommandInputs()
-        globalParameters.clear()
         if selectionInput.selectionCount > 0:
             if app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                 globalComp = selectionInput.selection(0).entity.component
@@ -82,12 +82,15 @@ def updateInputs():
                     selectionInput.clearSelection()
             else:
                 selectionInput.clearSelection()
+        else:
+            globalParameters.clear()
+            globalInputIndex.clear()
     else:
         for key, value in globalInputIndex.items():
             print(globalInputIndex)
             globalParameters[key] = globalInputIndex[key]
             if inputs.itemById(key).classType() == "adsk::core::DropDownCommandInput":
-                globalParameters[key] = {"value": inputs.itemById(key).selectedItem.name}
+                globalParameters[key]["value"] = inputs.itemById(key).selectedItem.name
             elif inputs.itemById(key).classType() == "adsk::core::IntegerSliderCommandInput":
                 globalParameters[key]["value"] = inputs.itemById(key).expressionOne
             pass
@@ -124,14 +127,6 @@ def updatePart(comp, parameterList):
             updateModelParameter(comp, value)
         elif key == "inserts":
             updateInserts(comp, value)
-
-    # updateModelParameter(globalComp, {"lengthHoles": {"value": "12", "indexMP": 1}})
-    # updateModelParameter(globalComp, globalParameters)
-    # updateInserts(globalComp, globalParameters)
-
-
-
-
         
 
 # Event handler that reacts to any changes the user makes to any of the command inputs.
@@ -249,6 +244,7 @@ def run(context):
 def stop(context):
     try:
         updatePart(globalComp, globalParameters)
+        # print(str(globalComp.attributes.itemByName("pVFL", "data").value))
 
         # print(str(globalComp.attributes.count))
         # print(str(globalComp.attributes.groupNames))
@@ -267,7 +263,7 @@ def stop(context):
         # globalComp.attributes.add("pVFL", "data",
         # """{
         #     "partName": "Al 1x2x1x35 C-Channel v1",
-        #     "isParametric": "1",
+        #     "isParametric": 1,
         #     "parameters": {
         #         "lengthHoles": {
         #             "indexMP": 1,
@@ -279,8 +275,26 @@ def stop(context):
 
         # globalComp.attributes.add("pVFL", "data",
         # """{
+        #     "partName": "Al 1x25 Plate v1",
+        #     "isParametric": 1,
+        #     "parameters": {
+        #         "lengthHoles": {
+        #             "indexMP": 1,
+        #             "minValue": 1,
+        #             "maxValue": 25
+        #         },
+        #         "widthHoles": {
+        #             "indexMP": 0,
+        #             "minValue": 1,
+        #             "maxValue": 5
+        #         }
+        #     }
+        # }""")
+
+        # globalComp.attributes.add("pVFL", "data",
+        # """{
         #     "partName": "HS 36t Gear v1",
-        #     "isParametric": "1",
+        #     "isParametric": 1,
         #     "parameters": {
         #         "inserts": {
         #             "squareBodies": ["Square Insert 1", "Square Insert 2"],
