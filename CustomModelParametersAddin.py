@@ -5,6 +5,9 @@ import adsk.core, adsk.fusion, adsk.cam, traceback
 import json
 import os, sys
 
+changeAttributesEnabled = False
+# changeAttributesEnabled = True
+
 app = None
 ui  = None
 global eventArgs
@@ -13,11 +16,51 @@ global cmdInput
 # selectionInput = None
 globalComp = None
 globalParameters = {}
-globalInputIndex = {}
 globalSize = None
+
 
 # Global set of event handlers to keep them referenced for the duration of the command
 _handlers = []
+
+def changeAttributes(comp):
+    app = adsk.core.Application.get()
+    ui = app.userInterface
+    design = app.activeProduct
+    if changeAttributesEnabled:
+        # ui.inputBox("Enter JSON string", "Change attributes")
+         # Prompt the user for a string and validate it's valid.
+        isValid = False
+        # input = ''  # The initial default value.
+        while not isValid:
+            # Get a string from the user.
+            enterJSON = ui.inputBox('Enter JSON string', 'Change Attributes')
+            # print(enterJSON)
+            # isCancelled = False
+            # if enterJSON[0]:
+            #     (input, isCancelled) = enterJSON
+            
+            # Exit the program if the dialog was cancelled.
+            if enterJSON[1]:
+                return
+            
+            # Check that a valid length description was entered.
+            unitsMgr = design.unitsManager
+            try:
+                # realValue = unitsMgr.evaluateExpression(input, unitsMgr.defaultLengthUnits)
+                json.loads(enterJSON[0])
+                isValid = True
+                applyJSON = ui.messageBox(enterJSON[0] + '\n\nis a valid JSON string.' + '\n\nWould you like to apply it?', 'Apply Attributes',
+                      adsk.core.MessageBoxButtonTypes.OKCancelButtonType)
+                if applyJSON == 0:
+                    comp.attributes.add("pVFL", "data", enterJSON[0])
+            except:
+                # Invalid expression so display an error and set the flag to allow them
+                # to enter a value again.
+                ui.messageBox(enterJSON[0] + '\n\nis not a valid JSON string.', 'Invalid entry', 
+                              adsk.core.MessageBoxButtonTypes.OKButtonType, 
+                              adsk.core.MessageBoxIconTypes.CriticalIconType)
+                isValid = False
+
 
 def createAllCommandInputs(commandInputs):
     selectionInput = commandInputs.addSelectionInput("selection", "Select Parametric Part", "Component to select")
@@ -41,7 +84,7 @@ def hideAllCommandInputs():
 
 def setHoles(key, value):
     thisIndexMP = value["indexMP"]
-    globalInputIndex[key] = {"value": "", "indexMP": thisIndexMP}
+    globalParameters[key] = {"value": "", "indexMP": thisIndexMP}
 
     thisInput = inputs.itemById(key)
     # thisInput.setText
@@ -53,7 +96,7 @@ def setHoles(key, value):
     thisInput.isVisible = True
 
 def setInserts(key, value):
-    globalInputIndex[key] = {"value": ""}
+    globalParameters[key] = {"value": ""}
     # listItems = add
     thisInput = inputs.itemById(key)
     # thisInput.expressionOne = str(globalComp.modelParameters.item(thisIndexMP).expression)
@@ -76,6 +119,7 @@ def updateInputs():
     selectionInput = inputs.itemById("selection")
     if cmdInput.id == "selection":
         if selectionInput.selectionCount > 0:
+            changeAttributes(selectionInput.selection(0).entity.component)
             if app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                 globalComp = selectionInput.selection(0).entity.component
                 if globalComp and globalComp.attributes.count > 0 and globalComp.attributes.itemByName("pVFL", "data"):
@@ -91,16 +135,14 @@ def updateInputs():
             if tempParamsFirstItem != tempParamsCurrentItem:
                 selectionInput.clearSelection()
                 globalParameters.clear()
-                globalInputIndex.clear()
                 hideAllCommandInputs()
         else:
             globalParameters.clear()
-            globalInputIndex.clear()
             hideAllCommandInputs()
     else:
-        for key, value in globalInputIndex.items():
-            print(globalInputIndex)
-            globalParameters[key] = globalInputIndex[key]
+        for key, value in globalParameters.items():
+            print(globalParameters)
+            globalParameters[key] = globalParameters[key]
             if inputs.itemById(key).classType() == "adsk::core::DropDownCommandInput":
                 globalParameters[key]["value"] = inputs.itemById(key).selectedItem.name
             elif inputs.itemById(key).classType() == "adsk::core::IntegerSliderCommandInput":
@@ -245,8 +287,9 @@ def run(context):
 
 def stop(context):
     try:
-        updatePart(globalComp, globalParameters)
-        print(str(globalComp.attributes.itemByName("pVFL", "data").value))
+        if not changeAttributesEnabled:
+            updatePart(globalComp, globalParameters)
+        # print(str(globalComp.attributes.itemByName("pVFL", "data").value))
 
         # print(str(globalComp.attributes.count))
         # print(str(globalComp.attributes.groupNames))
