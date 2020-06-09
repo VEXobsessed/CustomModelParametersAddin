@@ -20,6 +20,10 @@ globalSize = None
 _handlers = []
 
 def createAllCommandInputs(commandInputs):
+    selectionInput = commandInputs.addSelectionInput("selection", "Select Parametric Part", "Component to select")
+    selectionInput.setSelectionLimits(1, 0)
+    selectionFilter = selectionInput.addSelectionFilter("Occurrences")
+
     widthHoles = commandInputs.addIntegerSliderCommandInput("widthHoles", "Width", 1, 35)
     widthHoles.isVisible = False
     lengthHoles = commandInputs.addIntegerSliderCommandInput("lengthHoles", "Length", 1, 35)
@@ -71,20 +75,28 @@ def updateInputs():
 
     selectionInput = inputs.itemById("selection")
     if cmdInput.id == "selection":
-        hideAllCommandInputs()
         if selectionInput.selectionCount > 0:
             if app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                 globalComp = selectionInput.selection(0).entity.component
                 if globalComp and globalComp.attributes.count > 0 and globalComp.attributes.itemByName("pVFL", "data"):
-                    # print(json.loads(globalComp.attributes.itemByName("pVFL", "data").value)["parameters"])
                     setSomeCommandInputs(json.loads(globalComp.attributes.itemByName("pVFL", "data").value)["parameters"])
                 else:
                     selectionInput.clearSelection()
             else:
                 selectionInput.clearSelection()
+            tempCompFirstItem = selectionInput.selection(0).entity.component
+            tempCompCurrentItem = selectionInput.selection(selectionInput.selectionCount - 1 ).entity.component
+            tempParamsFirstItem = json.loads(tempCompFirstItem.attributes.itemByName("pVFL", "data").value)["parameters"]
+            tempParamsCurrentItem = json.loads(tempCompCurrentItem.attributes.itemByName("pVFL", "data").value)["parameters"]
+            if tempParamsFirstItem != tempParamsCurrentItem:
+                selectionInput.clearSelection()
+                globalParameters.clear()
+                globalInputIndex.clear()
+                hideAllCommandInputs()
         else:
             globalParameters.clear()
             globalInputIndex.clear()
+            hideAllCommandInputs()
     else:
         for key, value in globalInputIndex.items():
             print(globalInputIndex)
@@ -189,16 +201,6 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             # tabCmdInput1 = inputs.addTabCommandInput("tab_1", "Tab 1")
             editParametricInputs = inputs
 
-            # Create a selection input.
-            selectionInput = editParametricInputs.addSelectionInput("selection", "Select Parametric Part", "Component to select")
-            selectionInput.setSelectionLimits(1,1)
-            selectionFilter = selectionInput.addSelectionFilter("Occurrences")
-            # selectionInput.selectionFilters = selectionFilter
-
-            # Create integer slider input with one slider.
-            # sliderOne = editParametricInputs.addIntegerSliderCommandInput("widthHoles", "Length", 1, 35)
-            # sliderOne.isVisible = False
-
             createAllCommandInputs(editParametricInputs)
 
         except:
@@ -244,7 +246,7 @@ def run(context):
 def stop(context):
     try:
         updatePart(globalComp, globalParameters)
-        # print(str(globalComp.attributes.itemByName("pVFL", "data").value))
+        print(str(globalComp.attributes.itemByName("pVFL", "data").value))
 
         # print(str(globalComp.attributes.count))
         # print(str(globalComp.attributes.groupNames))
