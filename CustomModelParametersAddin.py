@@ -178,10 +178,22 @@ def run(context):
         app = adsk.core.Application.get()
         ui = app.userInterface
 
+        #simplifying definiton
+        ToolbarTabs = ui.allToolbarTabs
+
+        # TODO debug and finish fleshing out new button
+        #panelDef = ToolbarTabs.item(3).toolbarPanels.itemById('CMP')   #commented for debugging, seems like nothing actually gets created but im not sure
+
+        #if not panelDef:   #commented for debugging. should be included in final
+        ToolbarTabs.item(0).toolbarPanels.add('CMP', 'Customize Parameters')    #change to item(3) probably. switched to 0 for debugging
+
+
         # Get the existing command definition or create it if it doesn't already exist.
         cmdDef = ui.commandDefinitions.itemById('cmdInputsSample')
         if not cmdDef:
             cmdDef = ui.commandDefinitions.addButtonDefinition('cmdInputsSample', 'Edit Parametric Part', 'Sample to demonstrate various command inputs.')
+
+        ToolbarTabs.item(0).toolbarPanels.itemById('CMP').controls.addCommand(ui.commandDefinitions.itemById('cmdInputsSample'))    #akaik this should run the script when you press the button but the button never shows up :/
 
         # Connect to the command created event.
         onCommandCreated = MyCommandCreatedHandler()
@@ -192,14 +204,20 @@ def run(context):
         cmdDef.execute()
 
         # Prevent this module from being terminated when the script returns, because we are waiting for event handlers to fire.
-        adsk.autoTerminate(False)
+        #adsk.autoTerminate(False)
     except:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 
 def stop(context):
     try:
-        
+
+        ToolbarTabs = ui.allToolbarTabs
+        panelDef = ToolbarTabs.item(3).toolbarPanels.itemById('CMP')    #cleanup for the button. necessary bc f360 moans about duplicate IDs so 'CMD' does get created, theres just no change to UI >:(
+
+        if panelDef:
+            ToolbarTabs.item(3).toolbarPanels.itemById('CMP').deleteMe()
+
         # # ui.messageBox('end')
         # globalComp.modelParameters.item(1).expression = str(globalSize)
         # globalComp.attributes.add('VEX_CAD', 'Name', '2 wide C-Channel')
