@@ -6,7 +6,9 @@ import json
 import os, sys
 
 changeAttributesEnabled = False
-# changeAttributesEnabled = True
+changeAttributesEnabled = True
+identifyModelParametersEnabled = False
+# identifyModelParametersEnabled = True
 
 app = None
 ui  = None
@@ -14,9 +16,9 @@ global eventArgs
 global inputs
 global cmdInput
 # selectionInput = None
-globalComp = None
-globalParameters = {}
-globalSize = None
+selectedComp = None
+selectedCompAttributes = {}
+# globalSize = None
 
 
 # Global set of event handlers to keep them referenced for the duration of the command
@@ -27,134 +29,158 @@ def changeAttributes(comp):
     ui = app.userInterface
     design = app.activeProduct
     if changeAttributesEnabled:
-        # ui.inputBox("Enter JSON string", "Change attributes")
-         # Prompt the user for a string and validate it's valid.
-        isValid = False
-        # input = ''  # The initial default value.
-        while not isValid:
-            # Get a string from the user.
-            enterJSON = ui.inputBox('Enter JSON string', 'Change Attributes')
-            # print(enterJSON)
-            # isCancelled = False
-            # if enterJSON[0]:
-            #     (input, isCancelled) = enterJSON
+        comp.attributes.add("pVFL", "data", """{
+	"partName": "Al 1x2x1x35 C-Channel v1",
+	"isParametric": true,
+	"parameters": {
+		"FloatSpinnerHolesIndex": {
+			"indexDistance": 1,
+			"indexOffset": 2,
+			"minValue": 0.5,
+			"maxValue": 35,
+			"multiplier": 0.5
+		}
+	}
+}""")
+        
+        # # ui.inputBox("Enter JSON string", "Change attributes")
+        #  # Prompt the user for a string and validate it's valid.
+        # isValid = False
+        # # input = ''  # The initial default value.
+        # while not isValid:
+        #     # Get a string from the user.
+        #     enterJSON = ui.inputBox('Enter JSON string', 'Change Attributes')
+        #     # print(enterJSON)
+        #     # isCancelled = False
+        #     # if enterJSON[0]:
+        #     #     (input, isCancelled) = enterJSON
             
-            # Exit the program if the dialog was cancelled.
-            if enterJSON[1]:
-                return
+        #     # Exit the program if the dialog was cancelled.
+        #     if enterJSON[1]:
+        #         return
             
-            # Check that a valid length description was entered.
-            unitsMgr = design.unitsManager
-            try:
-                # realValue = unitsMgr.evaluateExpression(input, unitsMgr.defaultLengthUnits)
-                json.loads(enterJSON[0])
-                isValid = True
-                applyJSON = ui.messageBox(enterJSON[0] + '\n\nis a valid JSON string.' + '\n\nWould you like to apply it?', 'Apply Attributes',
-                      adsk.core.MessageBoxButtonTypes.OKCancelButtonType)
-                if applyJSON == 0:
-                    comp.attributes.add("pVFL", "data", enterJSON[0])
-            except:
-                # Invalid expression so display an error and set the flag to allow them
-                # to enter a value again.
-                ui.messageBox(enterJSON[0] + '\n\nis not a valid JSON string.', 'Invalid entry', 
-                              adsk.core.MessageBoxButtonTypes.OKButtonType, 
-                              adsk.core.MessageBoxIconTypes.CriticalIconType)
-                isValid = False
+        #     # Check that a valid length description was entered.
+        #     unitsMgr = design.unitsManager
+        #     try:
+        #         # realValue = unitsMgr.evaluateExpression(input, unitsMgr.defaultLengthUnits)
+        #         json.loads(enterJSON[0])
+        #         isValid = True
+        #         applyJSON = ui.messageBox(enterJSON[0] + '\n\nis a valid JSON string.' + '\n\nWould you like to apply it?', 'Apply Attributes',
+        #               adsk.core.MessageBoxButtonTypes.OKCancelButtonType)
+        #         if applyJSON == 0:
+        #             comp.attributes.add("pVFL", "data", enterJSON[0])
+        #     except:
+        #         # Invalid expression so display an error and set the flag to allow them
+        #         # to enter a value again.
+        #         ui.messageBox(enterJSON[0] + '\n\nis not a valid JSON string.', 'Invalid entry', 
+        #                       adsk.core.MessageBoxButtonTypes.OKButtonType, 
+        #                       adsk.core.MessageBoxIconTypes.CriticalIconType)
+        #         isValid = False
+
+def identifyModelParameters(comp):
+    if identifyModelParametersEnabled:
+        for index in range(comp.modelParameters.count):
+            comp.modelParameters.item(index).expression = str(index)
+
+
+
+
+
+
+
+
+
+inputsDict = []
+
+def defineInputs():
+    class Input:
+        def __init__(self, id, name):
+            self.id = id
+            self.name = name
+        def hide(self):
+            self.input.isVisible = False
+    
+    class IntSliderTwo(Input):
+        def create(self, commandInputs):
+            self.input = commandInputs.addIntegerSliderCommandInput(self.id, self.name, 1, 2, True)
+        def show(self, parameter):
+            self.parameter = parameter
+            self.input.minimumValue = self.parameter["minValue"]
+            self.input.maximumValue = self.parameter["maxValue"]
+            thisIndexMP = self.parameter["indexMP"]
+            self.input.expressionTwo = str(selectedComp.modelParameters.item(thisIndexMP).expression)
+            self.updateValue()
+            self.input.isVisible = True
+        def updateValue(self):
+            self.expressionOne = self.input.expressionOne
+            self.expressionTwo = self.input.expressionTwo
+        def updatePart(self, comp):
+            comp.modelParameters.item(self.parameter["indexMP"]).expression = self.expressionTwo
+
+    class FloatSpinnerHolesIndex(Input):
+        def create(self, commandInputs):
+            self.inputDistance = commandInputs.addFloatSpinnerCommandInput(self.id + 'Distance', self.name, '', 0, 1, 1, 0)
+            self.inputOffset = commandInputs.addFloatSpinnerCommandInput(self.id + 'Offset', 'Offset Holes', '', 0, 1, 1, 0)
+        def show(self, parameter):
+            self.parameter = parameter
+            self.inputDistance.minimumValue = self.parameter["minValue"]
+            self.inputDistance.maximumValue = self.parameter["maxValue"]
+            indexDistance = self.parameter["indexDistance"]
+            indexOffset = self.parameter["indexOffset"]
+            str(selectedComp.modelParameters.item(indexDistance).expression)
+            # self.inputDistance.value = str(selectedComp.modelParameters.item(indexDistance).expression)
+
+            self.inputOffset.minimumValue = self.parameter["minValue"]
+            if self.inputDistance.value < self.parameter["maxValue"]:
+                self.inputOffset.maximumValue = self.parameter["maxValue"] - self.inputDistance.value
+                self.inputOffset.isEnabled = True
+            else:
+                self.inputOffset.isEnabled = False
+            
+            self.inputDistance.isVisible = True
+            self.inputOffset.isVisible = True
+            self.updateValue()
+        def hide(self):
+            self.inputDistance.isVisible = False
+            self.inputOffset.isVisible = False
+        def updateValue(self):
+            self.expressionDistance = self.inputDistance.value
+            self.expressionOffset = self.inputOffset.expression
+        def updatePart(self, comp):
+            comp.modelParameters.item(self.parameter["indexDistance"]).expression = self.expressionDistance
+            comp.modelParameters.item(self.parameter["indexOffset"]).expression = self.expressionOffset
+    
+    return [
+        IntSliderTwo('widthHoles', 'Width'),
+        IntSliderTwo('lengthHoles', 'Length'),
+        FloatSpinnerHolesIndex('FloatSpinnerHolesIndex', 'Length Holes')]
+
+
+
+
+
+
+
+
+
+
+
 
 
 def createAllCommandInputs(commandInputs):
-    selectionInput = commandInputs.addSelectionInput("selection", "Select Parametric Part", "Component to select")
-    selectionInput.setSelectionLimits(1, 0)
-    selectionFilter = selectionInput.addSelectionFilter("Occurrences")
-
-    widthHoles = commandInputs.addIntegerSliderCommandInput("widthHoles", "Width", 1, 35)
-    widthHoles.isVisible = False
-    lengthHoles = commandInputs.addIntegerSliderCommandInput("lengthHoles", "Length", 1, 35)
-    lengthHoles.isVisible = False
-    inserts = commandInputs.addDropDownCommandInput("inserts", "Inserts", 0)
-    inserts.isVisible = False
-    inserts.listItems.add("None", True)
-    inserts.listItems.add("Square", False)
-    inserts.listItems.add("Round", False)
+    pass
 
 def hideAllCommandInputs():
-    inputs.itemById("widthHoles").isVisible = False
-    inputs.itemById("lengthHoles").isVisible = False
-    inputs.itemById("inserts").isVisible = False
+    for input in inputsDict:
+        inputsDict[input].hide()
 
-def setHoles(key, value):
-    thisIndexMP = value["indexMP"]
-    globalParameters[key] = {"value": "", "indexMP": thisIndexMP}
+def showSomeCommandInputs(parameters):
+    for parameter in parameters:
+        inputsDict[parameter].show(parameters[parameter])
 
-    thisInput = inputs.itemById(key)
-    # thisInput.setText
-    # thisInput.setText(value["name"], "")
-    thisInput.minimumValue = value["minValue"]
-    thisInput.maximumValue = value["maxValue"]
-    # modelParameters.item(1).expression = str(globalSize)
-    thisInput.expressionOne = str(globalComp.modelParameters.item(thisIndexMP).expression)
-    thisInput.isVisible = True
-
-def setInserts(key, value):
-    globalParameters[key] = {"value": ""}
-    # listItems = add
-    thisInput = inputs.itemById(key)
-    # thisInput.expressionOne = str(globalComp.modelParameters.item(thisIndexMP).expression)
-    # globalComp.
-    thisInput.isVisible = True
-
-def setSomeCommandInputs(parameters):
-    for key, value in parameters.items():
-        if key == "lengthHoles":
-            setHoles(key, value)
-        elif key == "widthHoles":
-            setHoles(key, value)
-        elif key == "inserts":
-            setInserts(key, value)
-
-def updateInputs():
-    global globalComp
-    global globalParameters
-
-    selectionInput = inputs.itemById("selection")
-    if cmdInput.id == "selection":
-        if selectionInput.selectionCount > 0:
-            changeAttributes(selectionInput.selection(0).entity.component)
-            if app.activeProduct.rootComponent != selectionInput.selection(0).entity:
-                globalComp = selectionInput.selection(0).entity.component
-                if globalComp and globalComp.attributes.count > 0 and globalComp.attributes.itemByName("pVFL", "data"):
-                    setSomeCommandInputs(json.loads(globalComp.attributes.itemByName("pVFL", "data").value)["parameters"])
-                else:
-                    selectionInput.clearSelection()
-            else:
-                selectionInput.clearSelection()
-            tempCompFirstItem = selectionInput.selection(0).entity.component
-            tempCompCurrentItem = selectionInput.selection(selectionInput.selectionCount - 1 ).entity.component
-            tempParamsFirstItem = json.loads(tempCompFirstItem.attributes.itemByName("pVFL", "data").value)["parameters"]
-            tempParamsCurrentItem = json.loads(tempCompCurrentItem.attributes.itemByName("pVFL", "data").value)["parameters"]
-            if tempParamsFirstItem != tempParamsCurrentItem:
-                selectionInput.clearSelection()
-                globalParameters.clear()
-                hideAllCommandInputs()
-        else:
-            globalParameters.clear()
-            hideAllCommandInputs()
-    else:
-        for key, value in globalParameters.items():
-            print(globalParameters)
-            globalParameters[key] = globalParameters[key]
-            if inputs.itemById(key).classType() == "adsk::core::DropDownCommandInput":
-                globalParameters[key]["value"] = inputs.itemById(key).selectedItem.name
-            elif inputs.itemById(key).classType() == "adsk::core::IntegerSliderCommandInput":
-                globalParameters[key]["value"] = inputs.itemById(key).expressionOne
-            pass
-            print(globalParameters)
-
-
-    # sizeInput.isVisible = True
-    # if cmdInput.id == "widthHoles":
-    global globalSize
-    globalSize = inputs.itemById("lengthHoles")
+def updateInputs(parameters):
+        for parameter in parameters:
+            inputsDict[parameter].updateValue()
 
 def updateModelParameter(comp, parameters):
     comp.modelParameters.item(parameters["indexMP"]).expression = parameters["value"]
@@ -173,14 +199,18 @@ def updateInserts(comp, parameters):
         updateBodyBulbs(comp, {"Square Insert 1": False, "Square Insert 2": False, "Round Insert 1": True, "Round Insert 2": True})
 
 
-def updatePart(comp, parameterList):
-    for key, value in parameterList.items():
-        if key == "lengthHoles":
-            updateModelParameter(comp, value)
-        elif key == "widthHoles":
-            updateModelParameter(comp, value)
-        elif key == "inserts":
-            updateInserts(comp, value)
+def updatePart(comp, parameters):
+    print(parameters)
+    for parameter in parameters['parameters']:
+        inputsDict[parameter].updatePart(comp)
+
+    # for key, value in parameters.items():
+    #     if key == "lengthHoles":
+    #         updateModelParameter(comp, value)
+    #     elif key == "widthHoles":
+    #         updateModelParameter(comp, value)
+    #     elif key == "inserts":
+    #         updateInserts(comp, value)
         
 
 # Event handler that reacts to any changes the user makes to any of the command inputs.
@@ -195,8 +225,29 @@ class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             eventArgs = adsk.core.InputChangedEventArgs.cast(args)
             inputs = eventArgs.inputs
             cmdInput = eventArgs.input
+            
 
-            updateInputs()
+            global selectedComp
+            global selectedCompAttributes
+
+            selectionInput = inputs.itemById("selection")
+            if cmdInput.id == "selection":
+                if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
+                    selectedComp = selectionInput.selection(0).entity.component
+                    # print(selectedComp.attributes.itemByName("pVFL", "data").value)
+                    changeAttributes(selectedComp)
+                    identifyModelParameters(selectedComp)
+                    if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
+                        selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
+                        # showSomeCommandInputs(selectedCompAttributes["parameters"])
+                    else:
+                        selectionInput.clearSelection()
+                else:
+                    selectionInput.clearSelection()
+                    selectedCompAttributes.clear()
+                    hideAllCommandInputs()
+            else:
+                updateInputs(selectedCompAttributes["parameters"])
 
         except:
             ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
@@ -237,13 +288,22 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             _handlers.append(onInputChanged)    
 
             # Get the CommandInputs collection associated with the command.
-            inputs = cmd.commandInputs
+            # inputs = cmd.commandInputs
 
             # Create a tab input.
             # tabCmdInput1 = inputs.addTabCommandInput("tab_1", "Tab 1")
-            editParametricInputs = inputs
+            selectionInput = cmd.commandInputs.addSelectionInput("selection", "Select Parametric Part", "Component to select")
+            selectionInput.setSelectionLimits(1, 0)
+            selectionInput.addSelectionFilter("Occurrences")
 
-            createAllCommandInputs(editParametricInputs)
+            global inputsDict
+            inputsDict = {inputs.id: inputs for inputs in defineInputs()}
+            for input in inputsDict:
+                inputsDict[input].create(cmd.commandInputs)
+            hideAllCommandInputs()
+
+
+            # createAllCommandInputs(editParametricInputs)
 
         except:
             ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
@@ -287,67 +347,9 @@ def run(context):
 
 def stop(context):
     try:
-        if not changeAttributesEnabled:
-            updatePart(globalComp, globalParameters)
-        # print(str(globalComp.attributes.itemByName("pVFL", "data").value))
-
-        # print(str(globalComp.attributes.count))
-        # print(str(globalComp.attributes.groupNames))
-        # print(str(globalComp.attributes.itemByName("pVFL", "part name").value))
-        # print(str(globalComp.attributes.itemByName("pVFL", "parametric").value))
-        # print(str(globalComp.attributes.itemByName("pVFL", "parameters").value))
-
-        # globalComp.attributes.add("pVFL", "part name", "Al 1x2x1x35 C-Channel v1")
-        # globalComp.attributes.add("pVFL", "parametric", "1")
-        # globalComp.attributes.add("pVFL", "parameters", "{"lengthHoles": {"name": "Length", "indexMP": 1, "minValue": 1, "maxValue": 35} }")
-
-        # globalComp.attributes.add("pVFL", "part name", "Al 1x25 Plate v1")
-        # globalComp.attributes.add("pVFL", "parametric", "1")
-        # globalComp.attributes.add("pVFL", "parameters", "{"widthHoles": {"name": "Width", "indexMP": 0, "minValue": 1, "maxValue": 5}, "lengthHoles": {"name": "Length", "indexMP": 1, "minValue": 1, "maxValue": 25} }")
-        
-        # globalComp.attributes.add("pVFL", "data",
-        # """{
-        #     "partName": "Al 1x2x1x35 C-Channel v1",
-        #     "isParametric": 1,
-        #     "parameters": {
-        #         "lengthHoles": {
-        #             "indexMP": 1,
-        #             "minValue": 1,
-        #             "maxValue": 35
-        #         }
-        #     }
-        # }""")
-
-        # globalComp.attributes.add("pVFL", "data",
-        # """{
-        #     "partName": "Al 1x25 Plate v1",
-        #     "isParametric": 1,
-        #     "parameters": {
-        #         "lengthHoles": {
-        #             "indexMP": 1,
-        #             "minValue": 1,
-        #             "maxValue": 25
-        #         },
-        #         "widthHoles": {
-        #             "indexMP": 0,
-        #             "minValue": 1,
-        #             "maxValue": 5
-        #         }
-        #     }
-        # }""")
-
-        # globalComp.attributes.add("pVFL", "data",
-        # """{
-        #     "partName": "HS 36t Gear v1",
-        #     "isParametric": 1,
-        #     "parameters": {
-        #         "inserts": {
-        #             "squareBodies": ["Square Insert 1", "Square Insert 2"],
-        #             "roundBodies": ["Round Insert 1", "Round Insert 2"]
-        #         }
-        #     }
-        # }""")
-        pass
+        if not changeAttributesEnabled and identifyModelParametersEnabled:
+            updatePart(selectedComp, selectedCompAttributes)
+        print(str(selectedComp.attributes.itemByName("pVFL", "data").value))
 
     except:
         if ui:
