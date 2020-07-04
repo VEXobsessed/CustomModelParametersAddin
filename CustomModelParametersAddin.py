@@ -6,7 +6,7 @@ import json
 import os, sys
 
 changeAttributesEnabled = False
-changeAttributesEnabled = True
+# changeAttributesEnabled = True
 identifyModelParametersEnabled = False
 # identifyModelParametersEnabled = True
 
@@ -20,6 +20,32 @@ selectedComp = None
 selectedCompAttributes = {}
 # globalSize = None
 
+manualAttributes = """{
+	"partName": "Al 1x2x1x35 C-Channel v1",
+	"isParametric": true,
+	"parameters": {
+		"FloatSpinnerHolesIndex": {
+			"indexDistance": 1,
+			"indexOffset": 2,
+			"minValue": 0.5,
+			"maxValue": 35,
+			"multiplier": 0.5
+		}
+	}
+}"""
+
+# manualAttributes = """{
+# 	"partName": "Al 1x2x1x35 C-Channel v1",
+# 	"isParametric": 1,
+# 	"parameters": {
+# 		"lengthHoles": {
+# 			"indexMP": 1,
+# 			"minValue": 1,
+# 			"maxValue": 35
+# 		}
+# 	}
+# }"""
+
 
 # Global set of event handlers to keep them referenced for the duration of the command
 _handlers = []
@@ -29,7 +55,7 @@ def changeAttributes(comp):
     ui = app.userInterface
     design = app.activeProduct
     if changeAttributesEnabled:
-        comp.attributes.add("pVFL", "data", """{
+        attribute = selectedComp.attributes.add("pVFL", "data", """{
 	"partName": "Al 1x2x1x35 C-Channel v1",
 	"isParametric": true,
 	"parameters": {
@@ -42,6 +68,8 @@ def changeAttributes(comp):
 		}
 	}
 }""")
+    # print(attribute.value)
+    # print(selectedComp.attributes.itemByName("pVFL", "data").value)
         
         # # ui.inputBox("Enter JSON string", "Change attributes")
         #  # Prompt the user for a string and validate it's valid.
@@ -115,27 +143,32 @@ def defineInputs():
             self.expressionOne = self.input.expressionOne
             self.expressionTwo = self.input.expressionTwo
         def updatePart(self, comp):
+            # print('IntSliderTwo.updatePart:')
+            # print(comp)
+            # comp.modelParameters.item(1).expression = '1'
+            # print(self.expressionTwo)
             comp.modelParameters.item(self.parameter["indexMP"]).expression = self.expressionTwo
 
     class FloatSpinnerHolesIndex(Input):
         def create(self, commandInputs):
-            self.inputDistance = commandInputs.addFloatSpinnerCommandInput(self.id + 'Distance', self.name, '', 0, 1, 1, 0)
-            self.inputOffset = commandInputs.addFloatSpinnerCommandInput(self.id + 'Offset', 'Offset Holes', '', 0, 1, 1, 0)
+            self.inputDistance = commandInputs.addFloatSpinnerCommandInput(self.id + 'Distance', self.name, '', 0, 40, 1, 0)
+            self.inputOffset = commandInputs.addFloatSpinnerCommandInput(self.id + 'Offset', 'Offset Holes', '', 0, 40, 1, 0)
         def show(self, parameter):
             self.parameter = parameter
             self.inputDistance.minimumValue = self.parameter["minValue"]
             self.inputDistance.maximumValue = self.parameter["maxValue"]
             indexDistance = self.parameter["indexDistance"]
             indexOffset = self.parameter["indexOffset"]
-            str(selectedComp.modelParameters.item(indexDistance).expression)
-            # self.inputDistance.value = str(selectedComp.modelParameters.item(indexDistance).expression)
+            # str(selectedComp.modelParameters.item(indexDistance).expression)
+            tempDistance = float(selectedComp.modelParameters.item(indexDistance).expression.replace(' in', '')) / parameter["multiplier"]
+            self.inputDistance.expression = str(tempDistance)
 
-            self.inputOffset.minimumValue = self.parameter["minValue"]
-            if self.inputDistance.value < self.parameter["maxValue"]:
-                self.inputOffset.maximumValue = self.parameter["maxValue"] - self.inputDistance.value
-                self.inputOffset.isEnabled = True
-            else:
-                self.inputOffset.isEnabled = False
+            # self.inputOffset.minimumValue = self.parameter["minValue"]
+            # if self.inputDistance.value < self.parameter["maxValue"]:
+            #     self.inputOffset.maximumValue = self.parameter["maxValue"] - self.inputDistance.value
+            #     self.inputOffset.isEnabled = True
+            # else:
+            #     self.inputOffset.isEnabled = False
             
             self.inputDistance.isVisible = True
             self.inputOffset.isVisible = True
@@ -144,14 +177,18 @@ def defineInputs():
             self.inputDistance.isVisible = False
             self.inputOffset.isVisible = False
         def updateValue(self):
-            self.expressionDistance = self.inputDistance.value
+            self.expressionDistance = self.inputDistance.expression
             self.expressionOffset = self.inputOffset.expression
         def updatePart(self, comp):
+            print('FloatSpinnerHolesIndex.updatePart:')
+            print(comp)
+            print(self.expressionDistance)
+            # comp.modelParameters.item(1).expression = '1'
             comp.modelParameters.item(self.parameter["indexDistance"]).expression = self.expressionDistance
-            comp.modelParameters.item(self.parameter["indexOffset"]).expression = self.expressionOffset
+            # comp.modelParameters.item(self.parameter["indexOffset"]).expression = self.expressionOffset
     
     return [
-        IntSliderTwo('widthHoles', 'Width'),
+        # IntSliderTwo('widthHoles', 'Width'),
         IntSliderTwo('lengthHoles', 'Length'),
         FloatSpinnerHolesIndex('FloatSpinnerHolesIndex', 'Length Holes')]
 
@@ -200,7 +237,8 @@ def updateInserts(comp, parameters):
 
 
 def updatePart(comp, parameters):
-    print(parameters)
+    print('updatePart: ')
+    print(comp)
     for parameter in parameters['parameters']:
         inputsDict[parameter].updatePart(comp)
 
@@ -231,23 +269,31 @@ class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             global selectedCompAttributes
 
             selectionInput = inputs.itemById("selection")
+            # changeAttributes(selectionInput.selection(0).entity.component)
+
             if cmdInput.id == "selection":
+                # selectionInput.selection(0).entity.component.modelParameters.item(1).expression = '10'
+                print('MyCommandInputChangedHandler: ')
+                print(selectionInput.selection(0).entity.component)
                 if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                     selectedComp = selectionInput.selection(0).entity.component
                     # print(selectedComp.attributes.itemByName("pVFL", "data").value)
                     changeAttributes(selectedComp)
                     identifyModelParameters(selectedComp)
-                    if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
-                        selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
-                        # showSomeCommandInputs(selectedCompAttributes["parameters"])
-                    else:
-                        selectionInput.clearSelection()
+                    # if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
+                        # selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
+                    # if selectedComp and selectedComp.attributes.count > 0:
+                    selectedCompAttributes = json.loads(manualAttributes)
+                    showSomeCommandInputs(selectedCompAttributes["parameters"])
+                    # else:
+                        # selectionInput.clearSelection()
                 else:
                     selectionInput.clearSelection()
                     selectedCompAttributes.clear()
                     hideAllCommandInputs()
             else:
                 updateInputs(selectedCompAttributes["parameters"])
+            # print(selectedComp.attributes.itemByName("pVFL", "data").value)
 
         except:
             ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
@@ -347,9 +393,11 @@ def run(context):
 
 def stop(context):
     try:
-        if not changeAttributesEnabled and identifyModelParametersEnabled:
-            updatePart(selectedComp, selectedCompAttributes)
-        print(str(selectedComp.attributes.itemByName("pVFL", "data").value))
+        # print('hi')
+        # if not changeAttributesEnabled and identifyModelParametersEnabled:
+            # ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
+        updatePart(selectedComp, selectedCompAttributes)
+        # print(selectedComp.attributes.itemByName("pVFL", "data").value)
 
     except:
         if ui:
