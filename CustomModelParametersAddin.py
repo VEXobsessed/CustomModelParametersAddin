@@ -29,7 +29,7 @@ manualAttributes = """{
 			"indexOffset": 2,
 			"minValue": 0.5,
 			"maxValue": 35,
-			"multiplier": 0.5
+			"multiplier": "0.5 in"
 		}
 	}
 }"""
@@ -121,12 +121,14 @@ def identifyModelParameters(comp):
 inputsDict = []
 
 def defineInputs():
-    def inchesToHoles(input):
-        return str(float(input.replace(' in', '')) * 2)
+    unitsMgr = app.activeProduct.unitsManager
+
+    def inchesToHolesValue(input):
+        return unitsMgr.evaluateExpression(input + '/' + '0.5in', '')
     
-    def holesToInches(input):
-        return str(float(input) * 0.5) + ' in'
-    
+    def holesToInchesValue(input):
+        return unitsMgr.evaluateExpression(input + '*' + '0.5in', '')
+
     class Input:
         def __init__(self, id, name):
             self.id = id
@@ -161,18 +163,11 @@ def defineInputs():
             self.inputOffset = commandInputs.addFloatSpinnerCommandInput(self.id + 'Offset', 'Offset Holes', '', 0, 40, 1, 0)
         def show(self, parameter):
             self.parameter = parameter
-            self.inputDistance.minimumValue = self.parameter["minValue"]
-            self.inputDistance.maximumValue = self.parameter["maxValue"]
+            # self.inputDistance.minimumValue = self.parameter["minValue"]
+            # self.inputDistance.maximumValue = self.parameter["maxValue"]
             indexDistance = self.parameter["indexDistance"]
             indexOffset = self.parameter["indexOffset"]
-            self.inputDistance.expression = inchesToHoles(selectedComp.modelParameters.item(indexDistance).expression)
-
-            # self.inputOffset.minimumValue = self.parameter["minValue"]
-            # if self.inputDistance.value < self.parameter["maxValue"]:
-            #     self.inputOffset.maximumValue = self.parameter["maxValue"] - self.inputDistance.value
-            #     self.inputOffset.isEnabled = True
-            # else:
-            #     self.inputOffset.isEnabled = False
+            self.inputDistance.expression = str(inchesToHolesValue(selectedComp.modelParameters.item(indexDistance).expression))
             
             self.inputDistance.isVisible = True
             self.inputOffset.isVisible = True
@@ -181,11 +176,24 @@ def defineInputs():
             self.inputDistance.isVisible = False
             self.inputOffset.isVisible = False
         def updateValue(self):
+            if self.inputDistance.value + self.inputOffset.value > self.parameter["maxValue"]:
+                self.inputOffset.value = self.parameter["maxValue"] - self.inputDistance.value
+
+            inputDistanceFloat = unitsMgr.evaluateExpression(self.inputDistance.expression, '')
+            # if inputDistanceFloat > inchesToHolesValue(selectedComp.modelParameters.item(indexDistance).expression):
+            print(inputDistanceFloat)
+            # if inputDistanceFloat > self.parameter["maxValue"]:
+            #     self.inputDistance.expression = str(self.parameter["maxValue"])
+            #     self.updateValue()
+            # if inputDistanceFloat > self.parameter["maxValue"]:
+            #     self.inputDistance.expression = str(self.parameter["maxValue"])
+            #     self.updateValue()
+
             self.expressionDistance = self.inputDistance.expression
             self.expressionOffset = self.inputOffset.expression
         def updatePart(self, comp):
-            comp.modelParameters.item(self.parameter["indexDistance"]).expression = holesToInches(self.expressionDistance)
-            comp.modelParameters.item(self.parameter["indexOffset"]).expression = holesToInches(self.expressionOffset)
+            comp.modelParameters.item(self.parameter["indexDistance"]).value = holesToInchesValue(self.expressionDistance)
+            comp.modelParameters.item(self.parameter["indexOffset"]).value = holesToInchesValue(self.expressionOffset)
     
     return [
         # IntSliderTwo('widthHoles', 'Width'),
@@ -237,8 +245,8 @@ def updateInserts(comp, parameters):
 
 
 def updatePart(comp, parameters):
-    print('updatePart: ')
-    print(comp)
+    # print('updatePart: ')
+    # print(comp)
     for parameter in parameters['parameters']:
         inputsDict[parameter].updatePart(comp)
 
@@ -273,8 +281,8 @@ class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
 
             if cmdInput.id == "selection":
                 # selectionInput.selection(0).entity.component.modelParameters.item(1).expression = '10'
-                print('MyCommandInputChangedHandler: ')
-                print(selectionInput.selection(0).entity.component)
+                # print('MyCommandInputChangedHandler: ')
+                # print(selectionInput.selection(0).entity.component)
                 if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
                     selectedComp = selectionInput.selection(0).entity.component
                     # print(selectedComp.attributes.itemByName("pVFL", "data").value)
