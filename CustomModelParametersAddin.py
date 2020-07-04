@@ -121,6 +121,12 @@ def identifyModelParameters(comp):
 inputsDict = []
 
 def defineInputs():
+    def inchesToHoles(input):
+        return str(float(input.replace(' in', '')) * 2)
+    
+    def holesToInches(input):
+        return str(float(input) * 0.5) + ' in'
+    
     class Input:
         def __init__(self, id, name):
             self.id = id
@@ -159,9 +165,7 @@ def defineInputs():
             self.inputDistance.maximumValue = self.parameter["maxValue"]
             indexDistance = self.parameter["indexDistance"]
             indexOffset = self.parameter["indexOffset"]
-            # str(selectedComp.modelParameters.item(indexDistance).expression)
-            tempDistance = float(selectedComp.modelParameters.item(indexDistance).expression.replace(' in', '')) / parameter["multiplier"]
-            self.inputDistance.expression = str(tempDistance)
+            self.inputDistance.expression = inchesToHoles(selectedComp.modelParameters.item(indexDistance).expression)
 
             # self.inputOffset.minimumValue = self.parameter["minValue"]
             # if self.inputDistance.value < self.parameter["maxValue"]:
@@ -180,12 +184,8 @@ def defineInputs():
             self.expressionDistance = self.inputDistance.expression
             self.expressionOffset = self.inputOffset.expression
         def updatePart(self, comp):
-            print('FloatSpinnerHolesIndex.updatePart:')
-            print(comp)
-            print(self.expressionDistance)
-            # comp.modelParameters.item(1).expression = '1'
-            comp.modelParameters.item(self.parameter["indexDistance"]).expression = self.expressionDistance
-            # comp.modelParameters.item(self.parameter["indexOffset"]).expression = self.expressionOffset
+            comp.modelParameters.item(self.parameter["indexDistance"]).expression = holesToInches(self.expressionDistance)
+            comp.modelParameters.item(self.parameter["indexOffset"]).expression = holesToInches(self.expressionOffset)
     
     return [
         # IntSliderTwo('widthHoles', 'Width'),
