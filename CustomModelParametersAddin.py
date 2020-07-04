@@ -19,6 +19,7 @@ global cmdInput
 selectedComp = None
 selectedCompAttributes = {}
 # globalSize = None
+newAttributes = None
 
 manualAttributes = """{
 	"partName": "Al 1x2x1x35 C-Channel v1",
@@ -237,8 +238,6 @@ def updateInserts(comp, parameters):
 
 
 def updatePart(comp, parameters):
-    print('updatePart: ')
-    print(comp)
     for parameter in parameters['parameters']:
         inputsDict[parameter].updatePart(comp)
 
@@ -269,28 +268,56 @@ class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             global selectedCompAttributes
 
             selectionInput = inputs.itemById("selection")
-            # changeAttributes(selectionInput.selection(0).entity.component)
 
             if cmdInput.id == "selection":
-                # selectionInput.selection(0).entity.component.modelParameters.item(1).expression = '10'
-                print('MyCommandInputChangedHandler: ')
-                print(selectionInput.selection(0).entity.component)
-                if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
-                    selectedComp = selectionInput.selection(0).entity.component
-                    # print(selectedComp.attributes.itemByName("pVFL", "data").value)
-                    changeAttributes(selectedComp)
-                    identifyModelParameters(selectedComp)
-                    # if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
-                        # selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
-                    # if selectedComp and selectedComp.attributes.count > 0:
-                    selectedCompAttributes = json.loads(manualAttributes)
-                    showSomeCommandInputs(selectedCompAttributes["parameters"])
-                    # else:
-                        # selectionInput.clearSelection()
-                else:
-                    selectionInput.clearSelection()
-                    selectedCompAttributes.clear()
-                    hideAllCommandInputs()
+                # changeAttributes(selectionInput.selection(0).entity.component)
+                selectedComp = selectionInput.selection(0).entity.component
+                global newAttributes
+                newAttributes = selectedComp.attributes.add("pVFL", "data", """{
+	"partName": "Al 1x2x1x35 C-Channel v1",
+	"isParametric": true,
+	"parameters": {
+		"FloatSpinnerHolesIndex": {
+			"indexDistance": 1,
+			"indexOffset": 2,
+			"minValue": 0.5,
+			"maxValue": 35,
+			"multiplier": 0.5
+		}
+	}
+}""")
+                print('selectedComp')
+                print(selectedComp)
+                print('newAttributes')
+                print(newAttributes)
+                print('newAttributes.value')
+                print(newAttributes.value)
+                print('selectedComp.attributes.count')
+                print(selectedComp.attributes.count)
+                print('selectedComp.attributes.groupNames')
+                print(selectedComp.attributes.groupNames)
+                print('selectedComp.attributes.itemByName("pVFL", "data")')
+                print(selectedComp.attributes.itemByName("pVFL", "data"))
+                print('selectedComp.attributes.itemByName("pVFL", "data").value')
+                print(selectedComp.attributes.itemByName("pVFL", "data").value)
+                
+                
+                # if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
+                #     selectedComp = selectionInput.selection(0).entity.component
+                #     # print(selectedComp.attributes.itemByName("pVFL", "data").value)
+                #     changeAttributes(selectedComp)
+                #     identifyModelParameters(selectedComp)
+                #     # if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
+                #         # selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
+                #     # if selectedComp and selectedComp.attributes.count > 0:
+                #     selectedCompAttributes = json.loads(manualAttributes)
+                #     showSomeCommandInputs(selectedCompAttributes["parameters"])
+                #     # else:
+                #         # selectionInput.clearSelection()
+                # else:
+                #     selectionInput.clearSelection()
+                #     selectedCompAttributes.clear()
+                #     hideAllCommandInputs()
             else:
                 updateInputs(selectedCompAttributes["parameters"])
             # print(selectedComp.attributes.itemByName("pVFL", "data").value)
@@ -396,8 +423,22 @@ def stop(context):
         # print('hi')
         # if not changeAttributesEnabled and identifyModelParametersEnabled:
             # ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
-        updatePart(selectedComp, selectedCompAttributes)
-        # print(selectedComp.attributes.itemByName("pVFL", "data").value)
+        # updatePart(selectedComp, selectedCompAttributes)
+        print('stop')
+        print('selectedComp')
+        print(selectedComp)
+        print('selectedComp.attributes.count')
+        print(selectedComp.attributes.count)
+        print('selectedComp.attributes.groupNames')
+        print(selectedComp.attributes.groupNames)
+        print('newAttributes') 
+        print(newAttributes)
+        print('selectedComp.attributes.itemByName("pVFL", "data")')
+        print(selectedComp.attributes.itemByName("pVFL", "data"))
+        print('newAttributes.value') 
+        print(newAttributes.value)
+        print('selectedComp.attributes.itemByName("pVFL", "data").value')
+        print(selectedComp.attributes.itemByName("pVFL", "data").value)
 
     except:
         if ui:
