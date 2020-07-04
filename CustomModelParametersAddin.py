@@ -12,7 +12,6 @@ global inputs
 global cmdInput
 selectedComp = None
 selectedCompAttributes = {}
-newAttribute = None
 
 # Global set of event handlers to keep them referenced for the duration of the command
 _handlers = []
@@ -39,16 +38,13 @@ class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
             if cmdInput.id == "selection":
                 # changeAttributes(selectionInput.selection(0).entity.component)
                 selectedComp = selectionInput.selection(0).entity.component
-                global newAttribute
-                newAttribute = selectedComp.attributes.add("Test groupName", "Test name", "Test value")
+                selectedComp.attributes.add("Test groupName", "Test name", "Test value")
                 print('MyCommandInputChangedHandler')
-                print('selectedComp: ' + str(selectedComp))
-                print('newAttribute: ' + str(newAttribute))
-                print('newAttribute.value: ' + str(newAttribute.value))
-                print('selectedComp.attributes.count: ' + str(selectedComp.attributes.count))
-                print('selectedComp.attributes.groupNames: ' + str(selectedComp.attributes.groupNames))
-                print('selectedComp.attributes.itemByName("Test groupName", "Test name"): ' + str(selectedComp.attributes.itemByName("Test groupName", "Test name")))
-                print('selectedComp.attributes.itemByName("Test groupName", "Test name").value: ' + str(selectedComp.attributes.itemByName("Test groupName", "Test name").value))
+                print('selectedComp:\n' + str(selectedComp))
+                print('selectedComp.attributes.count:\n' + str(selectedComp.attributes.count))
+                print('selectedComp.attributes.groupNames:\n' + str(selectedComp.attributes.groupNames))
+                print('selectedComp.attributes.itemByName("Test groupName", "Test name"):\n' + str(selectedComp.attributes.itemByName("Test groupName", "Test name")))
+                print('selectedComp.attributes.itemByName("Test groupName", "Test name").value:\n' + str(selectedComp.attributes.itemByName("Test groupName", "Test name").value))
 
         except:
             ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
@@ -125,14 +121,12 @@ def run(context):
 
 def stop(context):
     try:
-        print('\n\nstop')
-        print('selectedComp: ' + str(selectedComp))
-        print('selectedComp.attributes.count: ' + str(selectedComp.attributes.count))
-        print('selectedComp.attributes.groupNames: ' + str(selectedComp.attributes.groupNames))
-        print('newAttribute :' + str(newAttribute))
-        print('selectedComp.attributes.itemByName("Test groupName", "Test name"): ' + str(selectedComp.attributes.itemByName("Test groupName", "Test name")))
-        # print('newAttribute.value: ' + str(newAttribute.value))
-        print('selectedComp.attributes.itemByName("Test groupName", "Test name").value: ' + str(selectedComp.attributes.itemByName("Test groupName", "Test name").value))
+        print('\nstop')
+        print('selectedComp:\n' + str(selectedComp))
+        print('selectedComp.attributes.count:\n' + str(selectedComp.attributes.count))
+        print('selectedComp.attributes.groupNames:\n' + str(selectedComp.attributes.groupNames))
+        print('selectedComp.attributes.itemByName("Test groupName", "Test name"):\n' + str(selectedComp.attributes.itemByName("Test groupName", "Test name")))
+        print('selectedComp.attributes.itemByName("Test groupName", "Test name").value:\n' + str(selectedComp.attributes.itemByName("Test groupName", "Test name").value))
 
     except:
         if ui:
