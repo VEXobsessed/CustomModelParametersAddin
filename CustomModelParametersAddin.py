@@ -5,10 +5,8 @@ import adsk.core, adsk.fusion, adsk.cam, traceback
 import json
 import os, sys
 
-changeAttributesEnabled = False
-# changeAttributesEnabled = True
-identifyModelParametersEnabled = False
-# identifyModelParametersEnabled = True
+# Global set of event handlers to keep them referenced for the duration of the command
+_handlers = []
 
 app = None
 ui  = None
@@ -45,72 +43,6 @@ manualAttributes = """{
 # 		}
 # 	}
 # }"""
-
-
-# Global set of event handlers to keep them referenced for the duration of the command
-_handlers = []
-
-def changeAttributes(comp):
-    app = adsk.core.Application.get()
-    ui = app.userInterface
-    design = app.activeProduct
-    if changeAttributesEnabled:
-        attribute = selectedComp.attributes.add("pVFL", "data", """{
-	"partName": "Al 1x2x1x35 C-Channel v1",
-	"isParametric": true,
-	"parameters": {
-		"FloatSpinnerHolesIndex": {
-			"indexDistance": 1,
-			"indexOffset": 2,
-			"minValue": 0.5,
-			"maxValue": 35,
-			"multiplier": 0.5
-		}
-	}
-}""")
-    # print(attribute.value)
-    # print(selectedComp.attributes.itemByName("pVFL", "data").value)
-        
-        # # ui.inputBox("Enter JSON string", "Change attributes")
-        #  # Prompt the user for a string and validate it's valid.
-        # isValid = False
-        # # input = ''  # The initial default value.
-        # while not isValid:
-        #     # Get a string from the user.
-        #     enterJSON = ui.inputBox('Enter JSON string', 'Change Attributes')
-        #     # print(enterJSON)
-        #     # isCancelled = False
-        #     # if enterJSON[0]:
-        #     #     (input, isCancelled) = enterJSON
-            
-        #     # Exit the program if the dialog was cancelled.
-        #     if enterJSON[1]:
-        #         return
-            
-        #     # Check that a valid length description was entered.
-        #     unitsMgr = design.unitsManager
-        #     try:
-        #         # realValue = unitsMgr.evaluateExpression(input, unitsMgr.defaultLengthUnits)
-        #         json.loads(enterJSON[0])
-        #         isValid = True
-        #         applyJSON = ui.messageBox(enterJSON[0] + '\n\nis a valid JSON string.' + '\n\nWould you like to apply it?', 'Apply Attributes',
-        #               adsk.core.MessageBoxButtonTypes.OKCancelButtonType)
-        #         if applyJSON == 0:
-        #             comp.attributes.add("pVFL", "data", enterJSON[0])
-        #     except:
-        #         # Invalid expression so display an error and set the flag to allow them
-        #         # to enter a value again.
-        #         ui.messageBox(enterJSON[0] + '\n\nis not a valid JSON string.', 'Invalid entry', 
-        #                       adsk.core.MessageBoxButtonTypes.OKButtonType, 
-        #                       adsk.core.MessageBoxIconTypes.CriticalIconType)
-        #         isValid = False
-
-def identifyModelParameters(comp):
-    if identifyModelParametersEnabled:
-        for index in range(comp.modelParameters.count):
-            comp.modelParameters.item(index).expression = str(index)
-
-
 
 
 
@@ -259,70 +191,9 @@ def updatePart(comp, parameters):
     #         updateInserts(comp, value)
         
 
-# Event handler that reacts to any changes the user makes to any of the command inputs.
-class MyCommandInputChangedHandler(adsk.core.InputChangedEventHandler):
-    def __init__(self):
-        super().__init__()
-    def notify(self, args):
-        try:
-            global eventArgs
-            global inputs
-            global cmdInput
-            eventArgs = adsk.core.InputChangedEventArgs.cast(args)
-            inputs = eventArgs.inputs
-            cmdInput = eventArgs.input
-            
-
-            global selectedComp
-            global selectedCompAttributes
-
-            selectionInput = inputs.itemById("selection")
-            # changeAttributes(selectionInput.selection(0).entity.component)
-
-            if cmdInput.id == "selection":
-                # selectionInput.selection(0).entity.component.modelParameters.item(1).expression = '10'
-                # print('MyCommandInputChangedHandler: ')
-                # print(selectionInput.selection(0).entity.component)
-                if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
-                    selectedComp = selectionInput.selection(0).entity.component
-                    # print(selectedComp.attributes.itemByName("pVFL", "data").value)
-                    changeAttributes(selectedComp)
-                    identifyModelParameters(selectedComp)
-                    # if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("pVFL", "data"):
-                        # selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("pVFL", "data").value)
-                    # if selectedComp and selectedComp.attributes.count > 0:
-                    selectedCompAttributes = json.loads(manualAttributes)
-                    showSomeCommandInputs(selectedCompAttributes["parameters"])
-                    # else:
-                        # selectionInput.clearSelection()
-                else:
-                    selectionInput.clearSelection()
-                    selectedCompAttributes.clear()
-                    hideAllCommandInputs()
-            else:
-                updateInputs(selectedCompAttributes["parameters"])
-            # print(selectedComp.attributes.itemByName("pVFL", "data").value)
-
-        except:
-            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
-
-
-# Event handler that reacts to when the command is destroyed. This terminates the script.            
-class MyCommandDestroyHandler(adsk.core.CommandEventHandler):
-    def __init__(self):
-        super().__init__()
-    def notify(self, args):
-        try:
-            # When the command is done, terminate the script
-            # This will release all globals which will remove all event handlers
-            adsk.terminate()
-        except:
-            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
-
-
 # Event handler that reacts when the command definition is executed which
 # results in the command being created and this event being fired.
-class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
+class ModifyPartCreatedHandler(adsk.core.CommandCreatedEventHandler):
     def __init__(self):
         super().__init__()
     def notify(self, args):
@@ -331,15 +202,20 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
             # Get the command that was created.
             cmd = adsk.core.Command.cast(args.command)
 
-            # Connect to the command destroyed event.
-            onDestroy = MyCommandDestroyHandler()
-            cmd.destroy.add(onDestroy)
-            _handlers.append(onDestroy)
+            # # Connect to the command destroyed event.
+            # onDestroy = ModifyPartDestroyHandler()
+            # cmd.destroy.add(onDestroy)
+            # _handlers.append(onDestroy)
 
             # Connect to the input changed event.           
-            onInputChanged = MyCommandInputChangedHandler()
+            onInputChanged = ModifyPartInputChangedHandler()
             cmd.inputChanged.add(onInputChanged)
-            _handlers.append(onInputChanged)    
+            _handlers.append(onInputChanged)
+
+            # Connect to the execute event.
+            onExecute = ModifyPartExecuteHandler()
+            cmd.execute.add(onExecute)
+            _handlers.append(onExecute)
 
             # Get the CommandInputs collection associated with the command.
             # inputs = cmd.commandInputs
@@ -362,6 +238,88 @@ class MyCommandCreatedHandler(adsk.core.CommandCreatedEventHandler):
         except:
             ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
 
+# Event handler that reacts to any changes the user makes to any of the command inputs.
+class ModifyPartInputChangedHandler(adsk.core.InputChangedEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        try:
+            global eventArgs
+            global inputs
+            global cmdInput
+            eventArgs = adsk.core.InputChangedEventArgs.cast(args)
+            inputs = eventArgs.inputs
+            cmdInput = eventArgs.input
+            
+
+            global selectedComp
+            global selectedCompAttributes
+
+            selectionInput = inputs.itemById("selection")
+            # changeAttributes(selectionInput.selection(0).entity.component)
+
+            if cmdInput.id == "selection":
+                # selectionInput.selection(0).entity.component.modelParameters.item(1).expression = '10'
+                # print('ModifyPartInputChangedHandler: ')
+                # print(selectionInput.selection(0).entity.component)
+                if selectionInput.selectionCount == 1 and app.activeProduct.rootComponent != selectionInput.selection(0).entity:
+                    selectedComp = selectionInput.selection(0).entity.component
+                    # print(selectedComp.attributes.itemByName("VFL", "partData").value)
+                    if selectedComp and selectedComp.attributes.count > 0 and selectedComp.attributes.itemByName("VFL", "partData"):
+                        selectedCompAttributes = json.loads(selectedComp.attributes.itemByName("VFL", "partData").value)
+                        showSomeCommandInputs(selectedCompAttributes["parameters"])
+
+                    else:
+                        selectionInput.clearSelection()
+                else:
+                    selectionInput.clearSelection()
+                    selectedCompAttributes.clear()
+                    hideAllCommandInputs()
+            else:
+                updateInputs(selectedCompAttributes["parameters"])
+            # print(selectedComp.attributes.itemByName("VFL", "partData").value)
+
+        except:
+            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
+
+# Event handler for the execute event.
+class ModifyPartExecuteHandler(adsk.core.CommandEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        try:
+            # eventArgs = adsk.core.CommandEventArgs.cast(args)
+            
+            # # Get the command
+            # cmd = eventArgs.command
+
+            # # Get the CommandInputs collection to create new command inputs.            
+            # inputs = cmd.commandInputs
+
+            # # Code to react to the event.
+            # app = adsk.core.Application.get()
+            # ui  = app.userInterface
+            updatePart(selectedComp, selectedCompAttributes)
+
+            
+        except:
+            if ui:
+                ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
+
+
+# Event handler that reacts to when the command is destroyed. This terminates the script.            
+class ModifyPartDestroyHandler(adsk.core.CommandEventHandler):
+    def __init__(self):
+        super().__init__()
+    def notify(self, args):
+        try:
+            # When the command is done, terminate the script
+            # This will release all globals which will remove all event handlers
+            adsk.terminate()
+        except:
+            ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
+
+
 
 def run(context):
     try:
@@ -369,18 +327,32 @@ def run(context):
         app = adsk.core.Application.get()
         ui = app.userInterface
 
+        cmdDefs = ui.commandDefinitions
         # Get the existing command definition or create it if it doesn"t already exist.
-        cmdDef = ui.commandDefinitions.itemById("cmdInputsSample")
-        if not cmdDef:
-            cmdDef = ui.commandDefinitions.addButtonDefinition("cmdInputsSample", "Edit Parametric Part", "Sample to demonstrate various command inputs.")
+        modifyPartButton = cmdDefs.itemById("VFLModifyPart")
+        if not modifyPartButton:
+            modifyPartButton = cmdDefs.addButtonDefinition('VFLModifyPart', 
+                                                    'Modify VEX Part', 
+                                                    'Modify parametric parts from the VEX Fusion 360 Library.\n\nSelect part component and change parameters.',
+                                                    './resources/button')
+        
+
+
+
 
         # Connect to the command created event.
-        onCommandCreated = MyCommandCreatedHandler()
-        cmdDef.commandCreated.add(onCommandCreated)
-        _handlers.append(onCommandCreated)
+        modifyPartCommandCreated = ModifyPartCreatedHandler()
+        modifyPartButton.commandCreated.add(modifyPartCommandCreated)
+        _handlers.append(modifyPartCommandCreated)
+
+        # # Get the ADD-INS panel in the model workspace. 
+        modifyPanel = ui.allToolbarPanels.itemById('SolidModifyPanel')
+        
+        # Add the button to the bottom of the panel.
+        modifyPartButtonControl = modifyPanel.controls.addCommand(modifyPartButton)
 
         # Execute the command definition.
-        cmdDef.execute()
+        # cmdDef.execute()
 
         # Prevent this module from being terminated when the script returns, because we are waiting for event handlers to fire.
         adsk.autoTerminate(False)
@@ -401,11 +373,18 @@ def run(context):
 
 def stop(context):
     try:
-        # print('hi')
-        # if not changeAttributesEnabled and identifyModelParametersEnabled:
-            # ui.messageBox("Failed:\n{}".format(traceback.format_exc()))
-        updatePart(selectedComp, selectedCompAttributes)
-        # print(selectedComp.attributes.itemByName("pVFL", "data").value)
+        app = adsk.core.Application.get()
+        ui  = app.userInterface
+        
+        # Clean up the UI.
+        cmdDef = ui.commandDefinitions.itemById('VFLModifyPart')
+        if cmdDef:
+            cmdDef.deleteMe()
+            
+        modifyPanel = ui.allToolbarPanels.itemById('SolidModifyPanel')
+        cntrl = modifyPanel.controls.itemById('VFLModifyPart')
+        if cntrl:
+            cntrl.deleteMe()
 
     except:
         if ui:
